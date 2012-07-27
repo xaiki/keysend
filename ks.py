@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from gi.repository import Gtk
+from gi.repository import GtkClutter
+from gi.repository import Clutter
 from gi.repository import Gio
 from gi.repository import GLib
+
 import gi
 
 import os
@@ -14,6 +17,8 @@ DEFAULT_WARN_INSECURE_MESSAGE = 'ESTE MECANISMO ES INSEGURO, SI PUEDE, USE LA TE
 DEFAULT_READ_SIZE = 1024
 DEFAULT_PORT = 5000
 
+GtkClutter.init(None)
+
 class KeySend ():
     def __init__(self):
         self.b = b = Gtk.Builder()
@@ -23,7 +28,9 @@ class KeySend ():
         self.b.get_object ('entry_host')   .connect ("changed", self.host_changed_cb)
         self.b.get_object ('button_upload').connect ("clicked", self.upload_clicked_cb)
 
-        self.win   = win   = b.get_object ('window1')
+        self.win   = win   = GtkClutter.Window()
+        b.get_object ('window1').get_child().reparent(win)
+
         self.entry = entry = b.get_object ('entry1')
         self.img   = img   = b.get_object ('image_status')
         self.si = None
@@ -53,6 +60,54 @@ class KeySend ():
         entry.set_text (DEFAULT_KEY_PATH)
 
         self.entry_changed_cb (entry)
+        self.clutter_stuff()
+
+    def clutter_stuff (self):
+        self.actor = Clutter.Texture()
+        self.actor.set_from_file('face-glasses.png')
+        self.actor.set_content_gravity (Clutter.ContentGravity.CENTER)
+
+        self.wsize = self.win.get_size()
+        self.asize = self.actor.get_size()
+        (wx, wy) = self.wsize
+        (sx, sy) = self.asize
+
+        self.actor.set_position (wx/2, wy)
+        self.actor.set_scale (0.1, 0.1)
+
+        self.stage = self.win.get_stage()
+        self.stage.add_actor (self.actor)
+
+    def clutter_appear (self, t=None, a=None):
+        (wx, wy) = self.wsize
+        (sx, sy) = self.asize
+
+        self.actor.set_position (wx/2, wy)
+        self.actor.set_scale (0.1, 0.1)
+        self.actor.set_opacity (255)
+
+        anim = self.actor.animatev (Clutter.AnimationMode.EASE_IN_OUT_QUAD, 2000,
+                                    ["x", "y", "scale-x", "scale-y"],
+                                    [ wx/2 - sx/2 , wy/2 - sy/2, 1, 1])
+
+        anim.connect_after ("completed", self.clutter_disappear, None)
+
+    def clutter_disappear (self, t=None, a=None):
+        (wx, wy) = self.wsize
+        (sx, sy) = self.asize
+
+        anim = self.actor.animatev (Clutter.AnimationMode.LINEAR, 500,
+                                    ["opacity"], [0])
+
+        anim.connect_after ("completed", lambda a: a.get_timeline().stop())
+
+    def clutter_go_back (self, t=None, a=None):
+        (wx, wy) = self.wsize
+        (sx, sy) = self.asize
+
+        anim = self.actor.animatev (Clutter.AnimationMode.LINEAR, 10,
+                                    ["x", "y", "scale-x", "scale-y"],
+                                    [ wx/2, wy, 0.1, 0.1])
 
     def handle_response_cb (self, w, r, d = None):
         if (r == Gtk.ResponseType.YES):
@@ -214,7 +269,6 @@ class KeySend ():
         s.connect_to_host_async (h, p, None, self.socket_ready_cb, a)
 
     def socket_ready_cb (self, s, r, a):
-        print "Ready", s, r, a
         a.set_fraction (0.2)
         f = os.path.expanduser(self.entry.get_text())
 
@@ -237,11 +291,14 @@ class KeySend ():
         a.set_fraction (0.8)
 
     def socket_read_cb (self, s, r, a):
-        if s.read_finish(r) != 3: # 'OK' we have nothing better…
+        res = s.read_finish(r)
+        if res != 2: # 'OK' we have nothing better…
+            print res
             self._show_error ('Something May have gone wrong, but I\'m really not sure.',
                               Gtk.MessageType.WARNING)
 
         a.set_fraction (1)
+        self.clutter_appear()
 
     # def with_python_sockets (non-async) ():
     #     try:

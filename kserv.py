@@ -6,7 +6,7 @@ from subprocess import Popen, PIPE
 from tempfile   import NamedTemporaryFile
 
 host = ''
-port = 50000
+port = 5000
 backlog = 5
 size = 1024
 autoadd = True
