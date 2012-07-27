@@ -184,7 +184,7 @@ class KeySend ():
 
             self.show_default_error_msg()
 
-            e = self.b.get_object ('entry_ssh_key_path')
+        e = self.b.get_object ('entry_ssh_key_path')
         e.set_text (self.entry.get_text().rstrip('.pub'))
         w.show_all()
 
@@ -218,6 +218,7 @@ class KeySend ():
     def pass_changed_cb (self, e):
         l = e.get_text().__len__()
         if l == 0:
+            self.show_default_error_msg()
             return
         if l < 4:
             self._show_serror ('La clave tiene que ser mas larga que 4', Gtk.MessageType.ERROR)
@@ -244,8 +245,6 @@ class KeySend ():
     def do_gen_key (self, b, w):
         p = self.b.get_object ('entry_ssh_pass').get_text()
         d = os.path.expanduser( self.b.get_object ('entry_ssh_key_path').get_text())
-        cmd = "running:", "ssh-keygen -q -N '" + p + "' -f '" + d + "'"
-        print cmd
 
         p = Popen(['ssh-keygen', '-q', '-N', p, '-f', d], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
